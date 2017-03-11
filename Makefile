@@ -2,9 +2,11 @@
 
 CFLAGS+= -g
 
-all : nanotest.o example_test
+all : nanotest.o
 clean:
 	$(RM) *.o example_test
+check: example_test
+	./example_test
 
 nanotest.o : nanotest.c nanotest.h
 
