@@ -1,6 +1,6 @@
 
 
-CFLAGS+= -g
+CFLAGS+= -g -ffunction-sections -fdata-sections
 
 all : nanotest.o
 clean:
