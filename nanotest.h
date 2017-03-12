@@ -8,7 +8,10 @@
 #if !defined(__NANOTEST_H__)
 #define __NANOTEST_H__
 
+#define USE_NANOTEST 1
+
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 /*! \addtogroup LogOutput Log output
@@ -129,6 +132,28 @@ void nanotest_failed_bool(
     if (!! (x)) { \
       nanotest_failed_bool(false, NULL, __FILE__, __LINE__); \
     } } while (0)
+
+
+
+/*! Mock for IO registers */
+#define NANOTEST_NUM_IOREGION   20
+void nanotest_init_ioregion();
+void nanotest_add_32bit_ioregion(
+        uintptr_t startaddr,
+        size_t len,
+        uint32_t* buf);
+
+uint32_t nanotest_read_reg32(
+        uintptr_t ioaddr,
+        char const* fname, unsigned int lineno);
+void nanotest_write_reg32(
+        uintptr_t ioaddr,
+        uint32_t val,
+        char const* fname, unsigned int lineno);
+void nanotest_write_with_mask_reg32(
+        uintptr_t ioaddr,
+        uint32_t msk, uint32_t val,
+        char const* fname, unsigned int lineno);
 
 #endif
 // vim : sw=8 ts=4 tw=0 expandtab cindent

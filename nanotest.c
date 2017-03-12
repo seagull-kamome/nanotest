@@ -48,6 +48,7 @@ void nanotest_putfileline(
         char const* fname,
         unsigned int lineno,
         char const* desc) {
+  nanotest_putstr("  - ");
   nanotest_putstr(fname);
   nanotest_putstr(" (");
   nanotest_putuint(lineno);
@@ -91,7 +92,6 @@ void nanotest_failed_uint(
         unsigned int lineno) {
   nanotest_failed();
 
-  nanotest_putstr("  - ");
   nanotest_putfileline(fname, lineno, desc);
   nanotest_putstr("      Expected : ");
   nanotest_putuint(expected);
@@ -113,7 +113,6 @@ void nanotest_failed_bool(
         unsigned int lineno) {
   nanotest_failed();
 
-  nanotest_putstr("  - ");
   nanotest_putfileline(fname, lineno, desc);
   nanotest_putstr("      Expected ");
   nanotest_putstr(expected? nanotest_str_true : nanotest_str_false);
@@ -198,5 +197,78 @@ void nanotest_runtest(char const* targetcase, char const* targettest) {
   nanotest_putuint(num_total_fails);
   nanotest_putstrnl(" fails.");
 }
+
+
+#define NANOTEST_IOREGION_TYPE_NORMAL   0
+static struct nanotest_ioregion {
+  uintptr_t startaddr;
+  size_t len;
+  uint32_t type;
+  uint32_t* buf;
+} nanotest_ioregions[NANOTEST_NUM_IOREGION];
+
+void nanotest_init_ioregion() {
+  for (int i = 0; i < NANOTEST_NUM_IOREGION; i++)
+    nanotest_ioregions[i].len = 0;
+}
+
+void nanotest_add_32bit_ioregion(uintptr_t startaddr, size_t len, uint32_t* buf) {
+  for (int i = 0; i < NANOTEST_NUM_IOREGION; i++) {
+    if (nanotest_ioregions[i].len == 0) {
+      nanotest_ioregions[i].startaddr = startaddr;
+      nanotest_ioregions[i].len = len;
+      nanotest_ioregions[i].type = NANOTEST_IOREGION_TYPE_NORMAL;
+      nanotest_ioregions[i].buf = buf;
+      return ;
+    }
+  }
+  nanotest_putstrnl("** ERROR ** : Too many IO regions are registered.");
+}
+
+
+uint32_t* nanotest_search_ioreg(
+        uintptr_t ioaddr,
+        char const* desc,
+        char const* fname, unsigned int lineno) {
+  for (struct nanotest_ioregion const* p = nanotest_ioregions;
+       p < nanotest_ioregions + NANOTEST_NUM_IOREGION; p++) {
+    if (p->len > 0 && p->startaddr <= ioaddr && p->startaddr + p->len > ioaddr)
+      return p->buf + (ioaddr - p->startaddr);
+  }
+  nanotest_failed();
+  nanotest_putfileline(fname, lineno, desc);
+  nanotest_putstr("Accessing invalid address : ");
+  nanotest_putuint_hex(ioaddr);
+  return NULL;
+}
+
+
+uint32_t nanotest_read_reg32(
+        uintptr_t ioaddr,
+        char const* fname, unsigned int lineno) {
+  uint32_t* p = nanotest_search_ioreg(ioaddr, "Read IO register.",
+                                      fname, lineno);
+  return p? *p : 0;
+}
+
+
+void nanotest_write_reg32(
+        uintptr_t ioaddr,
+        uint32_t val,
+        char const* fname, unsigned int lineno) {
+  uint32_t* p = nanotest_search_ioreg(ioaddr, "Write IO register.",
+                                      fname, lineno);
+  if (p) *p = val;
+}
+
+void nanotest_write_with_mask_reg32(
+        uintptr_t ioaddr,
+        uint32_t msk, uint32_t val,
+        char const* fname, unsigned int lineno) {
+  uint32_t* p = nanotest_search_ioreg(ioaddr, "Mask and write IO register.",
+                                      fname, lineno);
+  if (p) *p = ((*p) & msk) | val;
+}
+
 
 // vim : sw=8 ts=4 tw=0 expandtab cindent
